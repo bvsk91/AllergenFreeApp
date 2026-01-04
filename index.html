@@ -71,12 +71,29 @@
         </div>
         <div class="modal-section">
           <div class="action-buttons">
-            <a id="modalDirectionsBtn" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-              📍 Get Directions
+            <a id="modalWebsiteBtn" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+              🌐 Official Website
             </a>
-            <a id="modalPhoneBtn" class="btn btn-secondary">
-              📞 Call Restaurant
+            <a id="modalDirectionsBtn" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+              📍 Directions
             </a>
+            <button id="modalAiScanBtn" class="btn btn-ai">
+              🤖 AI Menu Scan
+            </button>
+          </div>
+        </div>
+
+        <!-- AI Scanner Input (Hidden by default) -->
+        <div id="aiScanSection" class="modal-section hidden">
+          <h3 class="modal-section-title">🤖 AI Menu Analysis</h3>
+          <p class="ai-instruction">Paste menu text or a URL below for AI allergen analysis.</p>
+          <div class="ai-input-group">
+            <textarea id="aiMenuInput" placeholder="Paste menu items here..."></textarea>
+            <button id="aiSubmitBtn" class="btn btn-primary">Analyze Menu</button>
+          </div>
+          <div id="aiProgress" class="ai-progress hidden">
+            <div class="spinner"></div>
+            <span>AI is analyzing...</span>
           </div>
         </div>
       </div>

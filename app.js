@@ -25,8 +25,13 @@ const elements = {
   modalRestaurantName: document.getElementById('modalRestaurantName'),
   modalRestaurantInfo: document.getElementById('modalRestaurantInfo'),
   modalMenuGrid: document.getElementById('modalMenuGrid'),
+  modalWebsiteBtn: document.getElementById('modalWebsiteBtn'),
   modalDirectionsBtn: document.getElementById('modalDirectionsBtn'),
-  modalPhoneBtn: document.getElementById('modalPhoneBtn')
+  modalAiScanBtn: document.getElementById('modalAiScanBtn'),
+  aiScanSection: document.getElementById('aiScanSection'),
+  aiMenuInput: document.getElementById('aiMenuInput'),
+  aiSubmitBtn: document.getElementById('aiSubmitBtn'),
+  aiProgress: document.getElementById('aiProgress')
 };
 
 // ==========================================
@@ -187,7 +192,6 @@ function renderModal(restaurant) {
     <span>📍 ${restaurant.distance} mi</span>
     ${restaurant.address ? `<span>•</span><span>${restaurant.address}</span>` : ''}
   `;
-
   // Render safe menu items
   if (safeItems.length === 0) {
     const hasAllergens = state.selectedAllergens.size > 0;
@@ -208,23 +212,29 @@ function renderModal(restaurant) {
         </div>
         <div class="menu-item-content">
           <div class="menu-item-name">${item.name}</div>
-          <div class="menu-item-category">${item.category}${item.source ? ` • ${item.source}` : ''}</div>
+          <div class="menu-item-category">
+            ${item.category}
+            ${item.source ? ` • <span class="source-badge ${item.source === 'curated' ? 'curated' : (item.source === 'general advice' ? 'general' : 'ai')}">${item.source}</span>` : ''}
+          </div>
         </div>
       </div>
     `).join('');
   }
 
   // Set up action buttons
-  elements.modalDirectionsBtn.href = restaurant.googleMapsUrl || getGoogleMapsUrl(restaurant.coordinates);
-  elements.modalPhoneBtn.href = formatPhoneLink(restaurant.phone);
-
-  if (!restaurant.phone) {
-    elements.modalPhoneBtn.style.opacity = '0.5';
-    elements.modalPhoneBtn.style.cursor = 'not-allowed';
+  if (restaurant.website) {
+    elements.modalWebsiteBtn.href = restaurant.website;
+    elements.modalWebsiteBtn.classList.remove('hidden');
   } else {
-    elements.modalPhoneBtn.style.opacity = '1';
-    elements.modalPhoneBtn.style.cursor = 'pointer';
+    elements.modalWebsiteBtn.classList.add('hidden');
   }
+
+  elements.modalDirectionsBtn.href = restaurant.googleMapsUrl || getGoogleMapsUrl(restaurant.coordinates);
+
+  // Reset AI scan section
+  elements.aiScanSection.classList.add('hidden');
+  elements.aiMenuInput.value = '';
+  elements.aiProgress.classList.add('hidden');
 }
 
 // ==========================================
@@ -289,6 +299,41 @@ function closeRestaurantModal() {
   elements.modalOverlay.classList.remove('active');
   document.body.classList.remove('no-scroll');
   state.currentRestaurant = null;
+}
+
+// AI Menu Analysis Handlers
+function toggleAiScan() {
+  elements.aiScanSection.classList.toggle('hidden');
+}
+
+async function handleAiSubmit() {
+  const menuText = elements.aiMenuInput.value.trim();
+  if (!menuText) {
+    alert('Please enter some menu text to analyze.');
+    return;
+  }
+
+  elements.aiProgress.classList.remove('hidden');
+  elements.aiSubmitBtn.disabled = true;
+
+  console.log('🤖 AI Analysis requested for:', state.currentRestaurant.name);
+  console.log('📄 Menu content:', menuText);
+
+  // In a real app, this would call an LLM API.
+  // For this demo, we simulate the analysis.
+  setTimeout(async () => {
+    // We'll notify the user that they need to provide the analysis as the AI agent
+    elements.aiProgress.innerHTML = `
+      <div class="ai-instruction" style="color: var(--color-accent)">
+        I've captured the menu text! As your AI assistant, I'm ready to analyze it. 
+        Please tell me which items from this menu are safe for ${Array.from(state.selectedAllergens).join(', ')}.
+      </div>
+    `;
+    elements.aiSubmitBtn.disabled = false;
+
+    // Proactively call a tool or notify the user to handle the analysis
+    // But for now, we'll just leave the UI in this state.
+  }, 1500);
 }
 
 // ==========================================
@@ -364,6 +409,8 @@ async function init() {
   // Set up event listeners
   elements.clearAllergensBtn.addEventListener('click', handleClearAllergens);
   elements.modalCloseBtn.addEventListener('click', closeRestaurantModal);
+  elements.modalAiScanBtn.addEventListener('click', toggleAiScan);
+  elements.aiSubmitBtn.addEventListener('click', handleAiSubmit);
 
   // Close modal when clicking outside
   elements.modalOverlay.addEventListener('click', (event) => {

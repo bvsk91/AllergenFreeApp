@@ -250,6 +250,9 @@ class AllergenDB {
             };
         }
 
+        // Default source to 'user' if not specified
+        if (!menuItem.source) menuItem.source = 'user';
+
         this.userCustomData[restaurantId].items.push(menuItem);
         this.saveUserData();
     }
@@ -264,8 +267,12 @@ class AllergenDB {
 
         // Filter items that don't contain selected allergens
         return entry.items.filter(item => {
-            return !item.allergens.some(allergen => selectedAllergens.has(allergen));
-        });
+            const hasSelectedAllergen = item.allergens.some(allergen => selectedAllergens.has(allergen));
+            return !hasSelectedAllergen;
+        }).map(item => ({
+            ...item,
+            source: item.source || 'user'
+        }));
     }
 
     // Export user data
