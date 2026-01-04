@@ -67,7 +67,8 @@ class PlacesService {
                 },
                 includedPrimaryTypes: ['restaurant'],
                 maxResultCount: 20,
-                rankPreference: 'DISTANCE'
+                rankPreference: 'DISTANCE',
+                fields: ['places.id', 'places.displayName', 'places.formattedAddress', 'places.location', 'places.rating', 'places.userRatingCount', 'places.priceLevel', 'places.types', 'places.photos', 'places.regularOpeningHours']
             };
 
             console.log('🔍 Searching for restaurants with new Places API...');
