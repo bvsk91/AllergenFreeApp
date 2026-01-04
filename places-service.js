@@ -67,8 +67,7 @@ class PlacesService {
                 },
                 includedPrimaryTypes: ['restaurant'],
                 maxResultCount: 20,
-                rankPreference: 'DISTANCE',
-                languageCode: 'en'
+                rankPreference: 'DISTANCE'
             };
 
             console.log('🔍 Searching for restaurants with new Places API...');
