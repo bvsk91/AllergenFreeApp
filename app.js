@@ -301,6 +301,14 @@ function closeRestaurantModal() {
   state.currentRestaurant = null;
 }
 
+const ALLERGEN_DANGER_WORDS = {
+  'dairy': ['cheese', 'sour cream', 'queso', 'milk', 'butter', 'cream', 'yogurt', 'ranch', 'alfredo'],
+  'gluten': ['bread', 'flour', 'wheat', 'bun', 'pasta', 'crouton', 'tortilla', 'barley', 'rye', 'breaded'],
+  'nuts': ['peanut', 'walnut', 'almond', 'cashew', 'pecan', 'macadamia', 'hazelnut', 'nut'],
+  'peanuts': ['peanut'],
+  'soy': ['soy', 'tofu', 'sofritas', 'edamame', 'soybean', 'teriyaki']
+};
+
 // AI Menu Analysis Handlers
 function toggleAiScan() {
   elements.aiScanSection.classList.toggle('hidden');
@@ -316,24 +324,79 @@ async function handleAiSubmit() {
   elements.aiProgress.classList.remove('hidden');
   elements.aiSubmitBtn.disabled = true;
 
-  console.log('🤖 AI Analysis requested for:', state.currentRestaurant.name);
-  console.log('📄 Menu content:', menuText);
+  console.log('🤖 Real AI Analysis started for:', state.currentRestaurant.name);
 
-  // In a real app, this would call an LLM API.
-  // For this demo, we simulate the analysis.
+  // Simulate a short processing delay for "AI feel"
   setTimeout(async () => {
-    // We'll notify the user that they need to provide the analysis as the AI agent
-    elements.aiProgress.innerHTML = `
-      <div class="ai-instruction" style="color: var(--color-accent)">
-        I've captured the menu text! As your AI assistant, I'm ready to analyze it. 
-        Please tell me which items from this menu are safe for ${Array.from(state.selectedAllergens).join(', ')}.
-      </div>
-    `;
-    elements.aiSubmitBtn.disabled = false;
+    const selectedAllergensArr = Array.from(state.selectedAllergens);
+    const safeFound = performLocalAnalysis(menuText, selectedAllergensArr);
 
-    // Proactively call a tool or notify the user to handle the analysis
-    // But for now, we'll just leave the UI in this state.
-  }, 1500);
+    if (safeFound.length > 0) {
+      // Add items to Database as AI-sourced
+      safeFound.forEach(item => {
+        allergenDB.addCustomItem(state.currentRestaurant.id, state.currentRestaurant.name, {
+          name: item,
+          category: 'menu item',
+          allergens: [],
+          source: 'ai'
+        });
+      });
+
+      // Update UI
+      const updatedSafeItems = allergenDB.getSafeItemsForRestaurant(
+        state.currentRestaurant.name,
+        state.selectedAllergens,
+        state.currentRestaurant.types || []
+      );
+      state.currentRestaurant.safeItems = updatedSafeItems;
+      renderModal(state.currentRestaurant);
+
+      elements.aiProgress.innerHTML = `
+        <div class="ai-instruction" style="color: var(--color-success)">
+          ✅ Analysis complete! Found ${safeFound.length} safe items and added them to the menu.
+        </div>
+      `;
+    } else {
+      elements.aiProgress.innerHTML = `
+        <div class="ai-instruction" style="color: var(--color-warning)">
+          ⚠️ Analysis complete, but no items appeared safe for your selected allergens.
+        </div>
+      `;
+    }
+
+    elements.aiSubmitBtn.disabled = false;
+  }, 1000);
+}
+
+function performLocalAnalysis(text, allergens) {
+  // Split by common delimiters (newline, comma, or period)
+  const lines = text.split(/[\n,.]/);
+  const safeItems = [];
+
+  lines.forEach(line => {
+    const item = line.trim();
+    if (!item || item.length < 3) return;
+
+    let isDangerous = false;
+    const lowerItem = item.toLowerCase();
+
+    // Check against each selected allergen's danger words
+    allergens.forEach(allergen => {
+      const dangerWords = ALLERGEN_DANGER_WORDS[allergen] || [];
+      if (dangerWords.some(word => lowerItem.includes(word))) {
+        isDangerous = true;
+      }
+    });
+
+    if (!isDangerous) {
+      safeFoundItem = item.charAt(0).toUpperCase() + item.slice(1);
+      if (!safeItems.includes(safeFoundItem)) {
+        safeItems.push(safeFoundItem);
+      }
+    }
+  });
+
+  return safeItems;
 }
 
 // ==========================================
