@@ -9,7 +9,7 @@ class PlacesService {
     }
 
     // Fetch nearby restaurants
-    async getNearbyRestaurants(lat, lng, radius = CONFIG.SEARCH_RADIUS) {
+    async getNearbyRestaurants(lat, lng, radius = (typeof CONFIG !== 'undefined' ? CONFIG.SEARCH_RADIUS : 5000)) {
         const cacheKey = `nearby_${lat}_${lng}_${radius}`;
 
         // Check cache first
@@ -171,7 +171,8 @@ class PlacesService {
         if (!cached) return null;
 
         const age = Date.now() - cached.timestamp;
-        if (age > CONFIG.CACHE_DURATION) {
+        const cacheDuration = typeof CONFIG !== 'undefined' ? CONFIG.CACHE_DURATION : (24 * 60 * 60 * 1000);
+        if (age > cacheDuration) {
             this.cache.delete(key);
             return null;
         }
