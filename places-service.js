@@ -1,14 +1,31 @@
 // ==========================================
-// GOOGLE PLACES API SERVICE
+// GOOGLE PLACES API SERVICE (NEW API)
 // ==========================================
 
 class PlacesService {
     constructor() {
         this.cache = new Map();
         this.lastSearchLocation = null;
+        this.placesLibrary = null;
     }
 
-    // Fetch nearby restaurants
+    // Initialize the new Places library
+    async initPlacesLibrary() {
+        if (this.placesLibrary) return this.placesLibrary;
+
+        try {
+            if (typeof google !== 'undefined' && google.maps) {
+                this.placesLibrary = await google.maps.importLibrary('places');
+                console.log('✓ New Places API library loaded');
+                return this.placesLibrary;
+            }
+        } catch (error) {
+            console.warn('⚠ Could not load new Places library:', error);
+            return null;
+        }
+    }
+
+    // Fetch nearby restaurants using NEW Places API
     async getNearbyRestaurants(lat, lng, radius = (typeof CONFIG !== 'undefined' ? CONFIG.SEARCH_RADIUS : 5000)) {
         const cacheKey = `nearby_${lat}_${lng}_${radius}`;
 
@@ -19,17 +36,13 @@ class PlacesService {
             return cached;
         }
 
-        // Note: Direct API calls from browser will fail due to CORS
-        // In production, you need either:
-        // 1. A backend proxy server
-        // 2. Use Google Maps JavaScript API (loaded via script tag)
-
         try {
-            // Using Maps JavaScript API (if available)
-            if (typeof google !== 'undefined' && google.maps) {
-                return await this.searchWithMapsAPI(lat, lng, radius);
+            // Try new Places API first
+            const placesLib = await this.initPlacesLibrary();
+            if (placesLib) {
+                return await this.searchWithNewAPI(lat, lng, radius, placesLib);
             } else {
-                console.warn('⚠ Google Maps API not loaded. Using fallback mode.');
+                console.warn('⚠ New Places API not available. Using fallback mode.');
                 return this.getFallbackData(lat, lng);
             }
         } catch (error) {
@@ -38,91 +51,109 @@ class PlacesService {
         }
     }
 
-    // Search using Google Maps JavaScript API
-    async searchWithMapsAPI(lat, lng, radius) {
-        return new Promise((resolve, reject) => {
-            const map = new google.maps.Map(document.createElement('div'));
-            const service = new google.maps.places.PlacesService(map);
+    // Search using NEW Google Places API
+    async searchWithNewAPI(lat, lng, radius, placesLib) {
+        try {
+            const { Place } = placesLib;
+            const center = { lat, lng };
 
+            // Define the search request with field mask
             const request = {
-                location: new google.maps.LatLng(lat, lng),
-                radius: radius,
-                type: 'restaurant'
+                locationRestriction: {
+                    circle: {
+                        center: center,
+                        radius: radius
+                    }
+                },
+                includedPrimaryTypes: ['restaurant'],
+                maxResultCount: 20,
+                rankPreference: 'DISTANCE',
+                languageCode: 'en'
             };
 
-            service.nearbySearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    const restaurants = results.map(place => ({
-                        id: place.place_id,
-                        name: place.name,
-                        address: place.vicinity,
-                        coordinates: {
-                            lat: place.geometry.location.lat(),
-                            lng: place.geometry.location.lng()
-                        },
-                        rating: place.rating || 0,
-                        userRatingsTotal: place.user_ratings_total || 0,
-                        priceLevel: place.price_level,
-                        types: place.types,
-                        photos: place.photos ? place.photos.map(photo => ({
-                            url: photo.getUrl({ maxWidth: 400 })
-                        })) : [],
-                        isOpen: place.opening_hours?.isOpen(),
-                        distance: this.calculateDistance(lat, lng,
-                            place.geometry.location.lat(),
-                            place.geometry.location.lng())
-                    }));
+            console.log('🔍 Searching for restaurants with new Places API...');
 
-                    // Cache the results
-                    const cacheKey = `nearby_${lat}_${lng}_${radius}`;
-                    this.saveToCache(cacheKey, restaurants);
+            // Perform the nearby search
+            const { places } = await Place.searchNearby(request);
 
-                    resolve(restaurants);
-                } else {
-                    reject(new Error(`Places API error: ${status}`));
-                }
-            });
-        });
+            if (!places || places.length === 0) {
+                console.log('ℹ No restaurants found nearby, using fallback data');
+                return this.getFallbackData(lat, lng);
+            }
+
+            console.log(`✓ Found ${places.length} restaurants from Google Places API`);
+
+            // Transform the results to our format
+            const restaurants = await Promise.all(places.map(async (place) => {
+                const placeLocation = place.location;
+
+                return {
+                    id: place.id,
+                    name: place.displayName || place.name || 'Unknown Restaurant',
+                    address: place.formattedAddress || place.vicinity || 'Address unavailable',
+                    coordinates: {
+                        lat: placeLocation ? placeLocation.lat() : lat,
+                        lng: placeLocation ? placeLocation.lng() : lng
+                    },
+                    rating: place.rating || 0,
+                    userRatingsTotal: place.userRatingCount || 0,
+                    priceLevel: place.priceLevel || null,
+                    types: place.types || [],
+                    photos: place.photos ? place.photos.slice(0, 3).map(photo => ({
+                        url: photo.getURI ? photo.getURI({ maxWidth: 400 }) : null
+                    })).filter(p => p.url) : [],
+                    isOpen: place.regularOpeningHours?.isOpen?.() || null,
+                    distance: this.calculateDistance(lat, lng,
+                        placeLocation ? placeLocation.lat() : lat,
+                        placeLocation ? placeLocation.lng() : lng)
+                };
+            }));
+
+            // Cache the results
+            this.saveToCache(cacheKey, restaurants);
+
+            return restaurants;
+        } catch (error) {
+            console.error('New Places API error:', error);
+            console.log('ℹ Falling back to demo data');
+            return this.getFallbackData(lat, lng);
+        }
     }
 
-    // Get place details
+    // Get place details (still using the new API)
     async getPlaceDetails(placeId) {
         const cacheKey = `details_${placeId}`;
 
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
-        return new Promise((resolve, reject) => {
-            if (typeof google === 'undefined' || !google.maps) {
-                reject(new Error('Google Maps API not loaded'));
-                return;
+        try {
+            const placesLib = await this.initPlacesLibrary();
+            if (!placesLib) {
+                throw new Error('Places library not loaded');
             }
 
-            const map = new google.maps.Map(document.createElement('div'));
-            const service = new google.maps.places.PlacesService(map);
+            const { Place } = placesLib;
+            const place = new Place({ id: placeId });
 
-            const request = {
-                placeId: placeId,
-                fields: ['name', 'formatted_phone_number', 'opening_hours', 'website', 'url']
+            await place.fetchFields({
+                fields: ['displayName', 'formattedAddress', 'nationalPhoneNumber', 'websiteURI', 'googleMapsURI', 'regularOpeningHours']
+            });
+
+            const details = {
+                phone: place.nationalPhoneNumber,
+                website: place.websiteURI,
+                googleMapsUrl: place.googleMapsURI,
+                hours: place.regularOpeningHours?.weekdayDescriptions,
+                isOpen: place.regularOpeningHours?.isOpen?.()
             };
 
-            service.getDetails(request, (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    const details = {
-                        phone: place.formatted_phone_number,
-                        website: place.website,
-                        googleMapsUrl: place.url,
-                        hours: place.opening_hours?.weekday_text,
-                        isOpen: place.opening_hours?.isOpen()
-                    };
-
-                    this.saveToCache(cacheKey, details);
-                    resolve(details);
-                } else {
-                    reject(new Error(`Place details error: ${status}`));
-                }
-            });
-        });
+            this.saveToCache(cacheKey, details);
+            return details;
+        } catch (error) {
+            console.error('Place details error:', error);
+            return null;
+        }
     }
 
     // Fallback data when API is not available
