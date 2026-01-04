@@ -60,10 +60,8 @@ class PlacesService {
             // Define the search request with field mask
             const request = {
                 locationRestriction: {
-                    circle: {
-                        center: center,
-                        radius: radius
-                    }
+                    center: center,
+                    radius: radius
                 },
                 includedPrimaryTypes: ['restaurant'],
                 maxResultCount: 20,
