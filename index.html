@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Allergen Safe Eats - Find restaurants that are safe for your food allergies. Select your allergies and discover dining options with safe menu items.">
+  <title>Allergen Safe Eats - Find Safe Dining Options</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="app">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1>🍽️ Allergen Safe Eats</h1>
+        <p class="tagline">Discover restaurants that are safe for your allergies. Filter by allergens to find dining
+          options with confidence.</p>
+      </div>
+    </section>
+
+    <!-- Main Container -->
+    <div class="container">
+      <!-- Allergen Selection -->
+      <section class="allergen-section">
+        <div class="section-header">
+          <h2 class="section-title">Select Your Allergies</h2>
+          <button id="clearAllergensBtn" class="clear-btn">Clear All</button>
+        </div>
+        <div id="allergenGrid" class="allergen-grid">
+          <!-- Allergen checkboxes will be dynamically generated -->
+        </div>
+      </section>
+
+      <!-- Restaurant List -->
+      <section class="restaurant-section">
+        <div class="results-header">
+          <h2 class="section-title">Safe Restaurants</h2>
+          <p id="resultsCount" class="results-count">Showing all restaurants</p>
+        </div>
+        <div id="restaurantGrid" class="restaurant-grid">
+          <!-- Restaurant cards will be dynamically generated -->
+        </div>
+        <div id="emptyState" class="empty-state hidden">
+          <div class="empty-state-icon">🔍</div>
+          <h3 class="empty-state-title">No Safe Restaurants Found</h3>
+          <p>Try selecting fewer allergens to see more options.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Restaurant Detail Modal -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <button id="modalCloseBtn" class="modal-close" aria-label="Close modal">×</button>
+        <h2 id="modalRestaurantName" class="modal-restaurant-name"></h2>
+        <div id="modalRestaurantInfo" class="modal-restaurant-info">
+          <!-- Restaurant info will be dynamically populated -->
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <h3 class="modal-section-title">✅ Safe Menu Items</h3>
+          <div id="modalMenuGrid" class="menu-grid">
+            <!-- Safe menu items will be dynamically generated -->
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="action-buttons">
+            <a id="modalDirectionsBtn" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+              📍 Get Directions
+            </a>
+            <a id="modalPhoneBtn" class="btn btn-secondary">
+              📞 Call Restaurant
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <!-- Google Maps JavaScript API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBZnTEVBQMmtbN4_gTH0nVmeWDKd3d1Pwk&libraries=places"
+    async defer></script>
+
+  <!-- Application Scripts -->
+  <script src="config.js"></script>
+  <script src="allergen-db.js"></script>
+  <script src="places-service.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

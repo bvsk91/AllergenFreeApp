@@ -1,0 +1,28 @@
+# Don't commit sensitive data
+config.js
+.env
+.env.local
+
+# API Keys
+**/api-keys.js
+
+# Node modules (if using)
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
