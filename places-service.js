@@ -40,7 +40,7 @@ class PlacesService {
             // Try new Places API first
             const placesLib = await this.initPlacesLibrary();
             if (placesLib) {
-                return await this.searchWithNewAPI(lat, lng, radius, placesLib);
+                return await this.searchWithNewAPI(lat, lng, radius, placesLib, cacheKey);
             } else {
                 console.warn('⚠ New Places API not available. Using fallback mode.');
                 return this.getFallbackData(lat, lng);
@@ -52,7 +52,7 @@ class PlacesService {
     }
 
     // Search using NEW Google Places API
-    async searchWithNewAPI(lat, lng, radius, placesLib) {
+    async searchWithNewAPI(lat, lng, radius, placesLib, cacheKey) {
         try {
             const { Place } = placesLib;
             const center = { lat, lng };
