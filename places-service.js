@@ -84,12 +84,21 @@ class PlacesService {
 
             // Transform the results to our format
             const restaurants = await Promise.all(places.map(async (place) => {
+                // Fetch required fields for this place
+                try {
+                    await place.fetchFields({
+                        fields: ['id', 'displayName', 'formattedAddress', 'location', 'rating', 'userRatingCount', 'priceLevel', 'types', 'photos', 'regularOpeningHours']
+                    });
+                } catch (error) {
+                    console.warn('Could not fetch all fields for place:', error);
+                }
+
                 const placeLocation = place.location;
 
                 return {
                     id: place.id,
-                    name: place.displayName || place.name || 'Unknown Restaurant',
-                    address: place.formattedAddress || place.vicinity || 'Address unavailable',
+                    name: place.displayName || 'Unknown Restaurant',
+                    address: place.formattedAddress || 'Address unavailable',
                     coordinates: {
                         lat: placeLocation ? placeLocation.lat() : lat,
                         lng: placeLocation ? placeLocation.lng() : lng
