@@ -96,19 +96,85 @@ const ALLERGEN_DATABASE = {
 // ALLERGEN DATABASE METHODS
 // ==========================================
 
+const GENERIC_CUISINE_ADVICE = {
+    'fast_food_restaurant': {
+        'dairy': ['Burgers (no cheese)', 'Fries', 'Garden Salad (no cheese)', 'Grilled Chicken (unbreaded)'],
+        'gluten': ['Burger Bowls (no bun)', 'Salads (no croutons)', 'Grilled Chicken', 'Fries (verify dedicated fryer)'],
+        'nuts': ['Most basic burgers', 'Fries', 'Standard salads'],
+        'peanuts': ['Most basic burgers', 'Fries', 'Standard salads']
+    },
+    'pizza_restaurant': {
+        'dairy': ['Salads (no cheese)', 'Pizza with NO cheese', 'Vegan cheese options (if available)'],
+        'gluten': ['Gluten-free crust (if available)', 'Salads (no croutons)'],
+        'dairy-free': ['Pizza without cheese', 'Breadsticks (without butter/cheese)']
+    },
+    'mexican_restaurant': {
+        'dairy': ['Tacos/Burritos (no cheese or sour cream)', 'Guacamole', 'Ceviche', 'Frijoles (check for lard/cheese)'],
+        'gluten': ['Corn tortillas', 'Rice and Beans', 'Carnitas', 'Fajitas (with corn tortillas)'],
+        'soy': ['Grilled meats', 'Fresh salsas']
+    },
+    'italian_restaurant': {
+        'dairy': ['Pasta with marinara (no parm)', 'Grilled fish/chicken', 'Minestrone soup (check for cheese)', 'Bruschetta (no cheese)'],
+        'gluten': ['Gluten-free pasta (if available)', 'Grilled meats', 'Risotto (check for bouillon/butter)']
+    },
+    'japanese_restaurant': {
+        'dairy': ['Most sushi rolls', 'Sashimi', 'Miso soup', 'Edamame', 'Teriyaki (check for soy/gluten)'],
+        'gluten': ['Sashimi', 'Steamed rice', 'Tamari-based sauces'],
+        'soy': ['Sashimi (no soy sauce)', 'Steamed rice', 'Grilled fish']
+    },
+    'american_restaurant': {
+        'dairy': ['Steak/Grilled Chicken', 'Baked Potato (no butter/sour cream)', 'Steamed Vegetables', 'Salads (no cheese/creamy dressing)'],
+        'gluten': ['Grilled proteins', 'Baked potato', 'Steamed vegetables', 'Salads (no croutons/bread)']
+    }
+};
+
 class AllergenDB {
     constructor() {
         this.database = ALLERGEN_DATABASE;
+        this.genericAdvice = GENERIC_CUISINE_ADVICE;
         this.userCustomData = this.loadUserData();
     }
 
     // Match restaurant name to known chains
-    findMatch(restaurantName) {
+    findMatch(restaurantName, cuisineTypes = []) {
         const searchName = restaurantName.toLowerCase();
 
+        // 1. Check curated chains
         for (const [chain, data] of Object.entries(this.database)) {
             if (data.matches.some(match => searchName.includes(match))) {
-                return { chain, data };
+                return { type: 'curated', chain, data };
+            }
+        }
+
+        // 2. Check generic advice by cuisine type
+        if (cuisineTypes && cuisineTypes.length > 0) {
+            for (const type of cuisineTypes) {
+                const normalizedType = type.toLowerCase();
+                if (this.genericAdvice[normalizedType]) {
+                    return {
+                        type: 'generic',
+                        data: { safeItems: this.genericAdvice[normalizedType] }
+                    };
+                }
+            }
+        }
+
+        // 3. Try to guess from name if no types provided
+        const nameKeywords = {
+            'pizza': 'pizza_restaurant',
+            'taco': 'mexican_restaurant',
+            'mexican': 'mexican_restaurant',
+            'burger': 'fast_food_restaurant',
+            'sushi': 'japanese_restaurant',
+            'italian': 'italian_restaurant'
+        };
+
+        for (const [keyword, adviceKey] of Object.entries(nameKeywords)) {
+            if (searchName.includes(keyword)) {
+                return {
+                    type: 'generic',
+                    data: { safeItems: this.genericAdvice[adviceKey] }
+                };
             }
         }
 
@@ -116,8 +182,8 @@ class AllergenDB {
     }
 
     // Get safe items for a restaurant
-    getSafeItemsForRestaurant(restaurantName, selectedAllergens) {
-        const match = this.findMatch(restaurantName);
+    getSafeItemsForRestaurant(restaurantName, selectedAllergens, cuisineTypes = []) {
+        const match = this.findMatch(restaurantName, cuisineTypes);
 
         if (!match) {
             // Check user custom data
@@ -125,7 +191,7 @@ class AllergenDB {
         }
 
         const safeItems = [];
-        const { data } = match;
+        const { data, type } = match;
 
         // For each allergen the user has selected, check what's safe
         selectedAllergens.forEach(allergen => {
@@ -134,7 +200,7 @@ class AllergenDB {
                     name: item,
                     category: 'menu item',
                     allergens: [],
-                    source: 'curated'
+                    source: type === 'curated' ? 'curated' : 'general advice'
                 })));
             }
         });
@@ -145,10 +211,10 @@ class AllergenDB {
     }
 
     // Check if restaurant has any safe items
-    hasSafeItems(restaurantName, selectedAllergens) {
+    hasSafeItems(restaurantName, selectedAllergens, cuisineTypes = []) {
         if (selectedAllergens.size === 0) return true;
 
-        const match = this.findMatch(restaurantName);
+        const match = this.findMatch(restaurantName, cuisineTypes);
         if (match) {
             return Array.from(selectedAllergens).some(allergen =>
                 match.data.safeItems[allergen] && match.data.safeItems[allergen].length > 0

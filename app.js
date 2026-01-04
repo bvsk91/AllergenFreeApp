@@ -245,12 +245,14 @@ async function handleAllergenToggle(event) {
 
 async function handleClearAllergens() {
   state.selectedAllergens.clear();
+  state.currentRestaurant = null;
 
   // Uncheck all checkboxes
   document.querySelectorAll('.allergen-checkbox').forEach(checkbox => {
     checkbox.checked = false;
   });
 
+  console.log('🧹 Clearing all allergens and resetting results');
   await filterRestaurants();
   renderRestaurantGrid();
 }
@@ -273,7 +275,7 @@ async function openRestaurantModal(restaurantId) {
   }
 
   // Get safe items from allergen database
-  const safeItems = allergenDB.getSafeItemsForRestaurant(restaurant.name, state.selectedAllergens);
+  const safeItems = allergenDB.getSafeItemsForRestaurant(restaurant.name, state.selectedAllergens, restaurant.types || []);
   restaurant.safeItems = safeItems;
 
   state.currentRestaurant = restaurant;
@@ -310,9 +312,10 @@ async function filterRestaurants() {
   // Filter by allergens using the allergen database
   if (state.selectedAllergens.size > 0) {
     restaurants = restaurants.filter(restaurant => {
-      const hasSafeItems = allergenDB.hasSafeItems(restaurant.name, state.selectedAllergens);
+      const types = restaurant.types || [];
+      const hasSafeItems = allergenDB.hasSafeItems(restaurant.name, state.selectedAllergens, types);
       if (hasSafeItems) {
-        restaurant.safeItemsCount = allergenDB.getSafeItemsCount(restaurant.name, state.selectedAllergens);
+        restaurant.safeItemsCount = allergenDB.getSafeItemsCount(restaurant.name, state.selectedAllergens, types);
       }
       return hasSafeItems;
     });
